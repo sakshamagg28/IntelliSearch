@@ -1,0 +1,8 @@
+# IntelliSearch query expansion dictionary example
+# Format: term=expanded query terms
+
+ir=information retrieval
+nlp=natural language processing
+dp=dynamic programming
+os=operating system
+dbms=database management system

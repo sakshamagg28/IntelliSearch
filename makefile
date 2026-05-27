@@ -7,11 +7,14 @@ BUILD_DIR := build
 
 SOURCES := \
 	src/main.cpp \
+	src/core/analytics.cpp \
 	src/core/posting_list.cpp \
 	src/core/search_engine.cpp \
 	src/core/trie.cpp \
+	src/parsing/query_expander.cpp \
 	src/parsing/tokenizer.cpp \
-	src/ranking/bm25.cpp
+	src/ranking/bm25.cpp \
+	src/utils/fuzzy.cpp
 
 OBJECTS := $(SOURCES:%.cpp=$(BUILD_DIR)/%.o)
 DEPS := $(OBJECTS:.o=.d)
