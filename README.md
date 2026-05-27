@@ -1,168 +1,156 @@
-# Mini-Search-Engine
+# IntelliSearch
 
+IntelliSearch is a systems-oriented C++ search engine foundation built around classic information retrieval data structures: an inverted index, sorted posting lists, BM25 ranking, trie-backed autocomplete, and a robust command-line search interface.
 
-### Table of Contents
+The project began as an academic search prototype and has been refactored into a cleaner, portfolio-ready codebase while preserving the original core idea: index a document collection, retrieve candidate documents through posting lists, score them with BM25, and return the top-k ranked results.
 
-[Introduction](#introduction)
+## Architecture
 
-[Inputs](#inputs)
-
-[Data structures](#data_structures)
-
-[Relevance score](#relevance_score)
-
-[Application interface](#app_interface)
-
-
-<a name="introduction"/>
-
-## Introduction
-
-This project implements a mini search engine. The implemented data structures and the approach followed is a very simplified form of the infrastructure that the search engines, like Google or Bing, use. More specifically, the application uses an [inverted index](https://en.wikipedia.org/wiki/Inverted_index) to efficiently store a set of text documents and is able to answer to *keyword queries*, returning the *top-k* (most relevant to the query) documents to the user.
-
-The project was developed for the class of ***"System Programing"*** in the Informatics Department, using **C++** *(without STL)* and **Object Oriented Programming practices**.
-
-
-<a name="inputs"/>
-
-## Inputs
-
-The ***docfile*** (or any other file name) is a file that includes all the documents that the application saves and processes.   
-Each line of this file is a document with words. For example, if the contents of the file are:
+```text
+IntelliSearch/
+├── include/                 Public C++ headers
+├── src/
+│   ├── core/                Trie, posting lists, search engine orchestration
+│   ├── parsing/             Query/document tokenization and CLI parsing helpers
+│   ├── ranking/             BM25 relevance scoring
+│   ├── utils/               Reserved for small shared utilities
+│   └── main.cpp             Interactive CLI entry point
+├── datasets/                Example document collections
+├── queries/                 Sample query workloads
+├── results/                 Historical expected outputs
+├── docs/                    Design notes and future documentation
+├── tests/                   Future regression and unit tests
+├── Makefile
+└── README.md
 ```
-0 The quick brown fox leaped over the lazy lazy dog
-1 Quick brown foxes leaped over lazy dogs for fun
+
+## Indexing Pipeline
+
+1. The CLI loads a dataset where each line is one document:
+
+   ```text
+   0 Document text goes here
+   1 Another document appears here
+   ```
+
+2. Document IDs are validated to be numeric, contiguous, and zero-based.
+3. Text is tokenized with punctuation handling and case normalization.
+4. Each normalized term is inserted into a trie.
+5. Terminal trie nodes own posting lists that track:
+   - which documents contain the term
+   - how many times the term appears in each document
+6. Document length statistics are retained for BM25 scoring.
+
+## Inverted Index
+
+The inverted index maps terms to posting lists:
+
+```text
+term -> [(doc_id, term_frequency), ...]
 ```
-It means that there are two documents, one for each line. The first word in each line is the ID of the specific document. 
 
-There are some demo datasets provided (in the [datasets folder](./datasets)), as well as some queries (in the [queries folder](./queries)) for them and their corresponding results (in the [results folder](./results)).
+Posting lists are kept sorted by document ID, which makes term-frequency lookup predictable and keeps the implementation lightweight. This is the central structure used by `/search`, `/df`, and `/tf`.
 
-> The document IDs must be given in order (starting from 0). An appropriate check is performed and in the case that an error is found the application is terminated.
+## BM25 Ranking
 
+IntelliSearch ranks documents with Okapi BM25, a standard lexical relevance function used in information retrieval systems.
 
-<a name="data_structures"/>
+For each query term, BM25 considers:
 
-## Data structures
+- term frequency in the document
+- document frequency across the collection
+- total document count
+- document length
+- average document length
+- configurable `k1` and `b` constants
 
-- A **dynamically allocated array** that stores all the text documents. It is used as a map, mapping *<doc_IDs>* to documents' text (standard array indexing is used for document identification).
+The engine sums per-term BM25 scores for candidate documents and returns the configured top-k results.
 
-    | docID |   text |
-    | :----: | :----: |
-    |  0     | The quick brown fox leaped over the lazy lazy dog    |
-    | 1      | Quick brown foxes leaped over lazy dogs for fun |
-    | ...    | ... |
+## Trie Autocomplete
 
-- The **inverted index** is essentially a matching of every word in the documents collection to these documents. 
-For example, for the two texts above, a part of the inverted index is represented as follows:
+The trie stores indexed vocabulary character-by-character. This supports fast prefix lookup:
 
-    | word  |  [ *<doc_ID>*, *<word_freq>*] |
-    | :----:| :------------:|
-    | brown | [0, 1] [1, 1] |
-    | lazy  | [0, 2] [1, 1] |
-    | for   | [1, 1]        |
-    | fun   | [1, 1]        |
-    | ...   | ...           |
+```text
+/suggest alg 5
+```
 
-    On the left side there is the key (every word), while on the right side there is a list of document IDs, as well as how many times each word appears in each document. This list is called a *postings list*. For example, the word *"lazy"* appears twice in document 0 ( thus [ 0, 2 ] ) and once in document 1.   
+Example output:
 
-- A [**Trie**](https://en.wikipedia.org/wiki/Trie) is used in order to efficiently find the *postings lists* and thus achieve fast searches in the index. It stores the documents' words. In its
-leaves each posting list is included. For example, in the following figure, a part of the Trie and postings lists is depicted.
+```text
+  algebra
+  algorithm
+  algorithms
+```
 
-![Trie](img/trie.png "Trie")
+Suggestions are generated directly from indexed terms, so autocomplete reflects the current dataset.
 
+## CLI Commands
 
-<a name="relevance_score"/>
+Build the project:
 
-## Relevance score
+```bash
+make
+```
 
-Given a query *(e.g. brown fun)*, the answer is calculated as follows:   
-For each word, the posting list from Trie is found. In the particular example ```[0,1] [1,1] and [1,1]``` respectively.   
-For each document ID *D* that appears in either one list or the other, the relevance
-of this particular document to the query *(i.e. its relevance score)* is calculated, using the
-[BM25](https://en.wikipedia.org/wiki/Okapi_BM25) type:
+Run against the small dataset:
 
-![BM25 type](img/BM25type.png "BM25 type")
+```bash
+./search_engine -i datasets/smallDataset.txt -k 5
+```
 
-- ***qi*** ​: a word part of the query.
-- ***f(qi, D)​*** : the *qi's* term frequency in the document.
-- ***​|D|*** ​: the number of document's words.
-- ***avgdl***​ : the average number of words from all the documents in the index.
-- ***k1, b*** : the parameters that allow us to optimize the search engine *(default values: ```k1 = 1.2, b = 0.75```)*.
-- ***IDF(qi)*** : the *inverse document frequency* (it represents in how many texts the word *qi* exists) and is calculated as follows:
- 
-    ![IDF type](img/IDFtype.png "IDF type")
+Interactive commands:
 
-  - ***N*** : the number of documents in the index.
-  - ***n(qi)*** : the number of documents that contain the word *qi*.
+```text
+/search <terms...>       Rank documents using BM25
+/topk <number>           Change result count for this session
+/suggest <prefix> [n]    Show trie autocomplete suggestions
+/df [term]               Print document frequency
+/tf <doc_id> <term>      Print term frequency
+/help                    Show available commands
+/exit                    Quit IntelliSearch
+```
 
-After calculating the score for each document the *K* higher scores are found and the
-corresponding documents are presented to the user.
+Example:
 
+```text
+search_engine> /search data structures
 
-<a name="app_interface"/>
+Rank  Doc ID  Score       Snippet
+----  ------  ----------  ----------------------------------------
+   1      55     2.05571  ... Hot 100 chart now incorporates [data] from sales ...
+```
 
-## Application interface
+Matched query terms are highlighted in snippets with square brackets.
 
-A makefile is provided. You can use the command ```$ make``` for easy compilation and ```$ make clean``` to delete all **.o* auto generated files.
+## Engineering Highlights
 
-To run the application use the command:   
-```$ ./minisearch -i <docfile> -k <K>```
+- Refactored from a flat coursework layout into `src/`, `include/`, `ranking/`, and `parsing/` modules.
+- Preserves the original trie plus posting-list indexing model.
+- Uses RAII in posting lists to reduce manual memory-management risk.
+- Separates tokenization, ranking, indexing, and CLI responsibilities.
+- Adds robust command validation to prevent malformed input crashes.
+- Supports configurable top-k both at startup and during an interactive session.
+- Adds trie-backed autocomplete without introducing external dependencies.
+- Keeps the implementation lightweight and suitable for future systems-level extensions.
 
-### Command line arguments 
+## Make Targets
 
-- ***-k*** : indicates how many results the application returns for each query.   
-e.g. For ```K=5``` the application will return 5 results (at most) for each query. If a query has less than, K will only return these.
-- ***-i*** : the input file name *(docfile by default)*.
+```bash
+make        # Build search_engine
+make run    # Build and run with datasets/smallDataset.txt
+make clean  # Remove build artifacts
+```
 
+## Roadmap
 
-### Application commands
+Planned future phases:
 
-When the application finishes creating the index, it will wait for the user's input. The user will be able to give the following commands:
+- Add focused unit tests for tokenization, posting lists, trie lookup, and BM25.
+- Add query operators such as phrase queries, boolean filters, and field-aware search.
+- Improve ranking with score normalization and better handling for very common terms.
+- Add fuzzy matching with edit distance or Levenshtein automata.
+- Add document ingestion helpers for richer file formats.
+- Later, introduce API and frontend layers around this C++ search core.
+- Later, add semantic retrieval and hybrid lexical/vector ranking.
 
-- ```/search q1 q2 q3 q4 ... q10```: The user searches for documents that contain one or more of the *qi* words after the command keyword. These words consist the query. For example, for the command ```/search brown lazy``` both of the above demo documents are returned. The command expects at least one word and at most 10.
-If more than 10 words are given, only the first 10 are used. Once the command ```/search``` is given,
-the application finds the documents that contain the words, calculates a score based on how relevant
-each document is with the query, sorts these documents based on this *relevance score* and prints the *top-K*. 
-
-    The user sees on his screen the serial number of the result, the ID of the document, the relevance score, the document, as well as where the query words are located in the document. More specifically for the query ```/search brown lazy``` for the two documents above, the user will see the following:
-
-    ```
-    /search brown lazy
-    1.( 1)[0.0341] Quick brown foxes leaped over lazy dogs for fun
-                         ^^^^^                   ^^^^
-    2.( 0)[0.0320] The quick brown fox leaped over the lazy lazy dog
-                             ^^^^^                     ^^^^ ^^^^
-    ```
-
-- ```/df```: The document frequency vector is printed, i.e. each word from the input file along with the number of documents in which it appears. In the example of the two documents above, the following will appear:
-    ```
-    /df
-    the 1
-    quick 1
-    over 2
-    leaped 2
-    lazy 2
-    fun 1
-    foxes 1
-    fox 1
-    for 1
-    dogs 1
-    dog 1
-    brown 2
-    The 1
-    Quick 1
-    ```
-
-    > If there is a word after the command, then the document frequency is printed only for the particular word. For example:    
-    ```
-    /df leaped
-    leaped 2
-    ```
-
-- ```/tf id q_word```: Prints the term frequency for the particular word in the particular document, i.e. how many times the word *"q_word"* appears in the document with the given ID. For example:
-    ```
-    /tf 0 lazy
-    0 lazy 2
-    ```
-
-- ```/exit```: Τhe application terminates.
+The current codebase intentionally remains a focused C++ search engine foundation. Backend APIs, frontend UI, databases, and semantic search are future phases rather than current dependencies.
