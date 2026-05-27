@@ -2,11 +2,11 @@ CXX := g++
 CXXFLAGS := -std=c++11 -Wall -Wextra -pedantic -Iinclude
 LDFLAGS :=
 
-TARGET := search_engine
+CLI_TARGET := search_engine
+API_TARGET := search_engine_api
 BUILD_DIR := build
 
-SOURCES := \
-	src/main.cpp \
+CORE_SOURCES := \
 	src/core/analytics.cpp \
 	src/core/posting_list.cpp \
 	src/core/search_engine.cpp \
@@ -16,24 +16,29 @@ SOURCES := \
 	src/ranking/bm25.cpp \
 	src/utils/fuzzy.cpp
 
-OBJECTS := $(SOURCES:%.cpp=$(BUILD_DIR)/%.o)
+CLI_OBJECTS := $(BUILD_DIR)/src/main.o $(CORE_SOURCES:%.cpp=$(BUILD_DIR)/%.o)
+API_OBJECTS := $(BUILD_DIR)/src/api_runner.o $(CORE_SOURCES:%.cpp=$(BUILD_DIR)/%.o)
+OBJECTS := $(CLI_OBJECTS) $(API_OBJECTS)
 DEPS := $(OBJECTS:.o=.d)
 
 .PHONY: all clean run
 
-all: $(TARGET)
+all: $(CLI_TARGET) $(API_TARGET)
 
-$(TARGET): $(OBJECTS)
-	$(CXX) $(CXXFLAGS) $(OBJECTS) $(LDFLAGS) -o $@
+$(CLI_TARGET): $(CLI_OBJECTS)
+	$(CXX) $(CXXFLAGS) $(CLI_OBJECTS) $(LDFLAGS) -o $@
+
+$(API_TARGET): $(API_OBJECTS)
+	$(CXX) $(CXXFLAGS) $(API_OBJECTS) $(LDFLAGS) -o $@
 
 $(BUILD_DIR)/%.o: %.cpp
 	@mkdir -p $(dir $@)
 	$(CXX) $(CXXFLAGS) -MMD -MP -c $< -o $@
 
-run: $(TARGET)
-	./$(TARGET) -i datasets/smallDataset.txt -k 5
+run: $(CLI_TARGET)
+	./$(CLI_TARGET) -i datasets/smallDataset.txt -k 5
 
 clean:
-	rm -rf $(BUILD_DIR) $(TARGET)
+	rm -rf $(BUILD_DIR) $(CLI_TARGET) $(API_TARGET)
 
 -include $(DEPS)

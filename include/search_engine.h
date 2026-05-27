@@ -32,6 +32,7 @@ struct SearchResult
     double expansion_score;
     double fuzzy_score;
     double phrase_boost;
+    std::string document;
     std::string snippet;
     std::vector<std::string> matched_terms;
     std::vector<std::string> fuzzy_matches;

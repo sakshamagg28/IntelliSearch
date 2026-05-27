@@ -1,6 +1,6 @@
 # IntelliSearch
 
-IntelliSearch is a systems-oriented C++ search engine foundation built around classic information retrieval data structures: an inverted index, sorted posting lists, BM25 ranking, trie-backed autocomplete, fuzzy matching, query expansion, phrase-aware ranking, and a robust command-line search interface.
+IntelliSearch is a systems-oriented C++ search platform built around classic information retrieval data structures: an inverted index, sorted posting lists, BM25 ranking, trie-backed autocomplete, fuzzy matching, query expansion, phrase-aware ranking, a robust command-line interface, and a FastAPI backend.
 
 The project began as an academic search prototype and has been refactored into a cleaner, portfolio-ready codebase while preserving the original core idea: index a document collection, retrieve candidate documents through posting lists, score them with BM25, and return the top-k ranked results.
 
@@ -8,6 +8,13 @@ The project began as an academic search prototype and has been refactored into a
 
 ```text
 IntelliSearch/
+├── backend/
+│   ├── app/                  FastAPI app factory and runtime config
+│   ├── models/               Pydantic request/response schemas
+│   ├── routes/               REST endpoint modules
+│   ├── services/             C++ adapter and analytics services
+│   ├── main.py               ASGI entry point
+│   └── requirements.txt
 ├── include/                 Public C++ headers
 ├── src/
 │   ├── core/                Trie, posting lists, search engine orchestration
@@ -104,12 +111,107 @@ Autocomplete prefix usage is tracked by the analytics module.
 
 ## Search Analytics
 
-The interactive session tracks:
+The CLI and backend both track lightweight in-process analytics:
 
 - normalized search query frequency
 - autocomplete prefix frequency
 
-Use `/analytics` to inspect the most frequent searches and autocomplete prefixes in the current run.
+Use `/analytics` in the CLI or `GET /analytics` in the backend to inspect the most frequent searches and autocomplete prefixes in the current run.
+
+## Backend API
+
+The FastAPI backend exposes the C++ IntelliSearch engine through REST endpoints. It uses a lightweight C++ JSON adapter binary, `search_engine_api`, so the backend receives structured engine output without parsing CLI text.
+
+Build the C++ CLI and API adapter:
+
+```bash
+make
+```
+
+Install backend dependencies:
+
+```bash
+python3 -m pip install -r backend/requirements.txt
+```
+
+Start the backend:
+
+```bash
+python3 -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Runtime configuration is provided with environment variables:
+
+```bash
+export INTELLISEARCH_DATASET=datasets/smallDataset.txt
+export INTELLISEARCH_EXPANSIONS=docs/expansions.example.txt
+export INTELLISEARCH_CORE_BINARY=./search_engine_api
+```
+
+If omitted, the backend defaults to `datasets/smallDataset.txt` and `./search_engine_api`.
+
+### API Endpoints
+
+```text
+GET  /health
+POST /search
+GET  /autocomplete?q=<prefix>&limit=<n>
+GET  /analytics
+```
+
+Health check:
+
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+Search with explanations:
+
+```bash
+curl -X POST http://127.0.0.1:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{"query":"spearrs","top_k":3,"explain":true}'
+```
+
+Autocomplete:
+
+```bash
+curl "http://127.0.0.1:8000/autocomplete?q=mus&limit=5"
+```
+
+Analytics:
+
+```bash
+curl "http://127.0.0.1:8000/analytics?limit=10"
+```
+
+Search responses include ranked documents, scores, snippets, and optional ranking details:
+
+```json
+{
+  "query": "spearrs",
+  "top_k": 1,
+  "explain": true,
+  "results": [
+    {
+      "rank": 1,
+      "doc_id": 0,
+      "document": "Spears seeks aborted tour payment ...",
+      "score": 1.639902,
+      "snippet": "[Spears] seeks aborted tour payment Singer Britney [Spears] is ...",
+      "ranking_details": {
+        "bm25_score": 0.0,
+        "expansion_score": 0.0,
+        "fuzzy_score": 1.639902,
+        "phrase_boost": 0.0,
+        "matched_terms": ["spears"],
+        "expansions": [],
+        "fuzzy_matches": ["spearrs -> spears (d=1)"]
+      }
+    }
+  ]
+}
+```
 
 ## CLI Commands
 
@@ -190,7 +292,7 @@ Rank  Doc ID  Score       Snippet
 ## Make Targets
 
 ```bash
-make        # Build search_engine
+make        # Build search_engine and search_engine_api
 make run    # Build and run with datasets/smallDataset.txt
 make clean  # Remove build artifacts
 ```
@@ -205,7 +307,7 @@ Planned future phases:
 - Improve ranking with score normalization and better handling for very common terms.
 - Optimize fuzzy matching with trie traversal or Levenshtein automata for larger vocabularies.
 - Add document ingestion helpers for richer file formats.
-- Later, introduce API and frontend layers around this C++ search core.
+- Later, introduce a frontend around the backend API.
 - Later, add semantic retrieval and hybrid lexical/vector ranking.
 
-The current codebase intentionally remains a focused C++ search engine foundation. Backend APIs, frontend UI, databases, and semantic search are future phases rather than current dependencies.
+The current codebase intentionally remains a focused C++ search engine with a thin backend API layer. Frontend UI, databases, authentication, and semantic search are future phases rather than current dependencies.

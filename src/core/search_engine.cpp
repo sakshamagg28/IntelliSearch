@@ -211,7 +211,8 @@ std::vector<SearchResult> SearchEngine::search(const std::vector<std::string> &q
         const double score = bm25_score + expansion_score + fuzzy_score + phrase_boost;
 
         results.push_back({0, doc_id, score, bm25_score, expansion_score, fuzzy_score,
-                           phrase_boost, make_snippet(documents_[doc_id], highlight_terms),
+                           phrase_boost, documents_[doc_id].text,
+                           make_snippet(documents_[doc_id], highlight_terms),
                            matched_terms, fuzzy_matches, expansions});
     }
 
