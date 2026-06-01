@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 
 def _resolve_path(project_root: Path, value: str) -> Path:
@@ -18,6 +18,7 @@ class Settings:
     dataset_path: Path
     expansion_dictionary_path: Optional[Path]
     command_timeout_seconds: float
+    cors_origins: List[str]
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -41,4 +42,12 @@ class Settings:
             if expansion_path
             else None,
             command_timeout_seconds=float(os.getenv("INTELLISEARCH_COMMAND_TIMEOUT", "15")),
+            cors_origins=[
+                origin.strip()
+                for origin in os.getenv(
+                    "INTELLISEARCH_CORS_ORIGINS",
+                    "http://localhost:5173,http://127.0.0.1:5173",
+                ).split(",")
+                if origin.strip()
+            ],
         )
