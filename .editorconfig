@@ -1,0 +1,30 @@
+# EditorConfig helps developers define and maintain consistent
+# coding styles between different editors and IDEs.
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+trim_trailing_whitespace = true
+
+# C++ Source and Headers
+[*.{cpp,h}]
+indent_style = space
+indent_size = 4
+
+# Python Source Files
+[*.py]
+indent_style = space
+indent_size = 4
+
+# React TSX/JS, Stylesheets, and HTML
+[*.{ts,tsx,js,jsx,css,html}]
+indent_style = space
+indent_size = 2
+
+# Configuration Formats
+[*.{json,yml,yaml,md}]
+indent_style = space
+indent_size = 2

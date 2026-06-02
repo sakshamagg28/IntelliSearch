@@ -1,0 +1,60 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the code
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Step 2: Set up GCC and compile C++ engine
+      - name: Set up GCC
+        run: sudo apt-get update && sudo apt-get install -y build-essential
+
+      - name: Build C++ Core Binaries
+        run: |
+          make clean
+          make
+
+      # Step 3: Set up Python environment and verify backend
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
+
+      - name: Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Verify Python Compilation
+        run: |
+          python -m py_compile backend/main.py backend/app/factory.py
+
+      # Step 4: Set up Node.js environment and build frontend
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        working-directory: ./frontend
+        run: npm ci
+
+      - name: Build React Production Frontend
+        working-directory: ./frontend
+        env:
+          VITE_API_BASE_URL: ""
+        run: npm run build

@@ -1,0 +1,17 @@
+.git
+.github
+build/
+search_engine
+search_engine_api
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+backend/__pycache__/
+backend/*/__pycache__/
+.DS_Store
+*.pyc
+*.pyo
+*.pyd
+.env
+.env.*
+.ipynb_checkpoints/

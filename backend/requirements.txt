@@ -1,2 +1,3 @@
-fastapi>=0.100
-uvicorn[standard]>=0.23
+fastapi>=0.100.0,<0.112.0
+uvicorn[standard]>=0.23.0,<0.31.0
+aiofiles>=23.0.0,<25.0.0

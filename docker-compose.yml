@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: intellisearch:latest
+    container_name: intellisearch-unified
+    ports:
+      - "8000:8000"
+    environment:
+      - INTELLISEARCH_DATASET=datasets/smallDataset.txt
+      - INTELLISEARCH_CORE_BINARY=/app/search_engine_api
+      - PORT=8000
+    volumes:
+      # Allows updating datasets locally without rebuilding the image
+      - ./datasets:/app/datasets
+    restart: unless-stopped

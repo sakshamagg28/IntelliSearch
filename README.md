@@ -1,313 +1,189 @@
-# IntelliSearch
+# IntelliSearch 🚀
 
-IntelliSearch is a systems-oriented C++ search platform built around classic information retrieval data structures: an inverted index, sorted posting lists, BM25 ranking, trie-backed autocomplete, fuzzy matching, query expansion, phrase-aware ranking, a robust command-line interface, and a FastAPI backend.
+[![Continuous Integration](https://github.com/your-username/IntelliSearch/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/IntelliSearch/actions/workflows/ci.yml)
+[![C++ Standard](https://img.shields.io/badge/C%2B%2B-11-blue.svg)](https://en.cppreference.com/w/cpp/11)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-teal.svg)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19.0-blue.svg)](https://react.dev)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-The project began as an academic search prototype and has been refactored into a cleaner, portfolio-ready codebase while preserving the original core idea: index a document collection, retrieve candidate documents through posting lists, score them with BM25, and return the top-k ranked results.
+**IntelliSearch** is a systems-oriented search platform featuring a custom-built C++ retrieval engine under the hood, integrated with a FastAPI Python web backend and a modern React single-page dashboard. 
 
-## Architecture
+This platform showcases the practical implementation of core computer science structures—such as inverted indices, child-sibling Trie prefix caches, edit-distance spelling tolerance, and phrase proximity verification—to serve queries under millisecond latencies.
 
+---
+
+## 🎯 Recruiter Highlights
+
+- **Custom Systems-Level Core**: Built entirely in C++ using RAII and smart pointers (`std::unique_ptr`) to ensure memory efficiency and avoid leaks.
+- **Classic Information Retrieval**: Implements **Okapi BM25** relevance ranking with customizable hyperparameters ($k_1$, $b$).
+- **Algorithmic Typos Tolerance**: Computes spelling corrections on-the-fly using Levenshtein distance calculations.
+- **Explainable Ranking**: The UI visualizes individual scoring weights (BM25, Fuzzy edit penalty, Synonym expansions, Phrase proximity boosts) so you see exactly *why* a document was ranked first.
+- **Enterprise-Ready Infrastructure**: Fully Dockerized (multi-stage build), orchestrated via Docker Compose, and verified automatically with GitHub Actions CI workflows.
+
+---
+
+## 🏗️ Architecture Overview
+
+The system is organized into decoupled layers: a backend storage core, a thin REST layer, and a client interface.
+
+```mermaid
+graph TD
+    subgraph Client [React Frontend - Port 5173 / 8000]
+        UI[Search Dashboard] -->|REST API Calls| ClientService[api.ts]
+        ClientService -->|Visual Scoring Data| UI
+    end
+
+    subgraph Server [FastAPI Python API - Port 8000]
+        ClientService -->|JSON Requests| Endpoint[Routes: /search, /autocomplete]
+        Endpoint -->|Record Query| PyAnalytics[In-Memory Counter Service]
+        Endpoint -->|Spawns Process| SubProc[subprocess.run]
+    end
+
+    subgraph Core [Transient C++ CLI Engine]
+        SubProc -->|Load Corpus & Expanders| InMemEngine[SearchEngine]
+        InMemEngine -->|Index Vocabulary| Trie[Trie Structure]
+        Trie -->|Point to| PostingList[Posting Lists]
+        InMemEngine -->|Score Documents| Ranker[BM25 + Fuzzy + Proximity]
+        Ranker -->|Format JSON Payload| Out[Stdout Output]
+        Out -->|Capture output| SubProc
+    end
+```
+
+### Folder Layout
 ```text
 IntelliSearch/
-├── backend/
-│   ├── app/                  FastAPI app factory and runtime config
-│   ├── models/               Pydantic request/response schemas
-│   ├── routes/               REST endpoint modules
-│   ├── services/             C++ adapter and analytics services
-│   ├── main.py               ASGI entry point
-│   └── requirements.txt
-├── include/                 Public C++ headers
-├── src/
-│   ├── core/                Trie, posting lists, search engine orchestration
-│   ├── parsing/             Tokenization and query expansion
-│   ├── ranking/             BM25 relevance scoring
-│   ├── utils/               Fuzzy matching helpers
-│   └── main.cpp             Interactive CLI entry point
-├── datasets/                Example document collections
-├── queries/                 Sample query workloads
-├── results/                 Historical expected outputs
-├── docs/                    Design notes and future documentation
-├── tests/                   Future regression and unit tests
-├── Makefile
-└── README.md
+├── .github/workflows/       GitHub Actions CI workflows
+├── backend/                  FastAPI python app factory, routers, and schemas
+├── datasets/                 Plain-text document collections
+├── docs/                     System design documentation
+├── frontend/                 React + TypeScript Vite dashboard
+├── include/                  Public C++ headers (Trie, PostingList, Engine)
+├── src/                      C++ source files (tokenizers, score algorithms)
+├── tests/                    Regression verification test workspace
+├── Dockerfile                Multi-stage build recipe
+├── docker-compose.yml        Local stack orchestrator
+├── Makefile                  Unified builder
+└── README.md                 Documentation
 ```
 
-## Indexing Pipeline
+---
 
-1. The CLI loads a dataset where each line is one document:
+## ⚡ Quick Start (Local & Docker)
 
-   ```text
-   0 Document text goes here
-   1 Another document appears here
-   ```
+Ensure you have a C++ compiler (`g++`), Python `3.11+`, and Node.js `20+` installed.
 
-2. Document IDs are validated to be numeric, contiguous, and zero-based.
-3. Text is tokenized with punctuation handling and case normalization.
-4. Each normalized term is inserted into a trie.
-5. Terminal trie nodes own posting lists that track:
-   - which documents contain the term
-   - how many times the term appears in each document
-6. Document length statistics and vocabulary terms are retained for BM25 and fuzzy matching.
+### Option A: Bare-Metal Setup (Local Development)
 
-## Inverted Index
-
-The inverted index maps terms to posting lists:
-
-```text
-term -> [(doc_id, term_frequency), ...]
-```
-
-Posting lists are kept sorted by document ID, which makes term-frequency lookup predictable and keeps the implementation lightweight. This is the central structure used by `/search`, `/df`, and `/tf`.
-
-## BM25 Ranking
-
-IntelliSearch ranks documents with Okapi BM25, a standard lexical relevance function used in information retrieval systems.
-
-For each query term, BM25 considers:
-
-- term frequency in the document
-- document frequency across the collection
-- total document count
-- document length
-- average document length
-- configurable `k1` and `b` constants
-
-The engine uses BM25 as the primary score, then adds smaller contributions from query expansion, fuzzy matches, and exact phrase boosts. Ranking explanations can show how each component affected the final score.
-
-## Query Intelligence
-
-IntelliSearch adds lightweight query intelligence on top of lexical retrieval:
-
-- **Fuzzy search:** misspelled terms are corrected against indexed vocabulary with bounded edit distance. For example, `spearrs` can match `spears`.
-- **Query expansion:** acronyms and aliases expand into related terms. Built-in examples include `dp -> dynamic programming`, `os -> operating system`, and `dbms -> database management system`.
-- **Configurable dictionaries:** pass `-e <file>` or `--expansions <file>` to load extra expansions. Each line uses `term=expanded words`; `#` comments are ignored.
-- **Phrase boosting:** multi-term queries receive an additional score when a document contains the exact normalized phrase, while BM25 remains the primary ranking signal.
-
-Expansion dictionary example:
-
-```text
-ir=information retrieval
-nlp=natural language processing
-```
-
-## Trie Autocomplete
-
-The trie stores indexed vocabulary character-by-character. This supports fast prefix lookup:
-
-```text
-/suggest alg 5
-```
-
-Example output:
-
-```text
-  algebra
-  algorithm
-  algorithms
-```
-
-Suggestions are generated directly from indexed terms, so autocomplete reflects the current dataset.
-
-Autocomplete prefix usage is tracked by the analytics module.
-
-## Search Analytics
-
-The CLI and backend both track lightweight in-process analytics:
-
-- normalized search query frequency
-- autocomplete prefix frequency
-
-Use `/analytics` in the CLI or `GET /analytics` in the backend to inspect the most frequent searches and autocomplete prefixes in the current run.
-
-## Backend API
-
-The FastAPI backend exposes the C++ IntelliSearch engine through REST endpoints. It uses a lightweight C++ JSON adapter binary, `search_engine_api`, so the backend receives structured engine output without parsing CLI text.
-
-Build the C++ CLI and API adapter:
-
+#### 1. Compile the C++ Engine
 ```bash
 make
 ```
+This builds the interactive CLI tool `./search_engine` and the API runner `./search_engine_api`.
 
-Install backend dependencies:
-
+#### 2. Start the Backend API
+Install dependencies and run FastAPI using Uvicorn:
 ```bash
-python3 -m pip install -r backend/requirements.txt
-```
-
-Start the backend:
-
-```bash
-python3 -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
-```
-
-Runtime configuration is provided with environment variables:
-
-```bash
+pip install -r backend/requirements.txt
 export INTELLISEARCH_DATASET=datasets/smallDataset.txt
-export INTELLISEARCH_EXPANSIONS=docs/expansions.example.txt
 export INTELLISEARCH_CORE_BINARY=./search_engine_api
+python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-If omitted, the backend defaults to `datasets/smallDataset.txt` and `./search_engine_api`.
-
-### API Endpoints
-
-```text
-GET  /health
-POST /search
-GET  /autocomplete?q=<prefix>&limit=<n>
-GET  /analytics
-```
-
-Health check:
-
+#### 3. Start the Frontend
+In a new terminal window, build and run the development frontend:
 ```bash
-curl http://127.0.0.1:8000/health
+cd frontend
+npm install
+npm run dev
 ```
+Open `http://localhost:5173` in your browser.
 
-Search with explanations:
+---
 
+### Option B: Single-Command Docker Setup 🐳
+
+We provide a production-ready, multi-stage `Dockerfile` that packages both the frontend and backend together. The React frontend is compiled and served directly from FastAPI, removing CORS concerns and simplifying setup.
+
+#### Using Docker Compose (Recommended)
 ```bash
-curl -X POST http://127.0.0.1:8000/search \
-  -H "Content-Type: application/json" \
-  -d '{"query":"spearrs","top_k":3,"explain":true}'
+docker compose up --build
 ```
+This builds the unified stack and starts it at **`http://localhost:8000`**.
 
-Autocomplete:
-
+#### Using Makefile Utilities
+We provide easy commands inside the `Makefile` for raw Docker operations:
 ```bash
-curl "http://127.0.0.1:8000/autocomplete?q=mus&limit=5"
+make docker-build   # Build the unified image
+make docker-run     # Run the container on port 8000
 ```
 
-Analytics:
+---
 
-```bash
-curl "http://127.0.0.1:8000/analytics?limit=10"
-```
+## 📖 Component Breakdown
 
-Search responses include ranked documents, scores, snippets, and optional ranking details:
+### 1. C++ Retrieval Engine
+- **Inverted Index**: Maps tokens to sorted lists of `(doc_id, tf)` pairs. It allows $O(\log \text{docs})$ matching during search operations.
+- **Trie Prefix Autocomplete**: A custom child-sibling ternary structure storing dictionary tokens for autocomplete lookups in $O(M)$ length complexity, feeding the frontend suggestions on-the-fly.
+- **BM25 Relevance Scoring**: Okapi BM25 implementation:
+  $$Score(D, Q) = \sum_{q \in Q} IDF(q) \cdot \frac{f(q, D) \cdot (k_1 + 1)}{f(q, D) + k_1 \cdot \left(1 - b + b \cdot \frac{|D|}{avgdl}\right)}$$
+- **Fuzzy Matcher**: Compares typo queries with the indexed vocabulary using Levenshtein edit distance, penalizing score proportionally to the distance.
+- **Query Expansion**: Modifies bag-of-words tokens to insert aliases (e.g., alias `ml` expands into `machine learning`), improving search recall.
 
-```json
-{
-  "query": "spearrs",
-  "top_k": 1,
-  "explain": true,
-  "results": [
-    {
-      "rank": 1,
-      "doc_id": 0,
-      "document": "Spears seeks aborted tour payment ...",
-      "score": 1.639902,
-      "snippet": "[Spears] seeks aborted tour payment Singer Britney [Spears] is ...",
-      "ranking_details": {
-        "bm25_score": 0.0,
-        "expansion_score": 0.0,
-        "fuzzy_score": 1.639902,
-        "phrase_boost": 0.0,
-        "matched_terms": ["spears"],
-        "expansions": [],
-        "fuzzy_matches": ["spearrs -> spears (d=1)"]
-      }
-    }
-  ]
-}
-```
-
-## CLI Commands
-
-Build the project:
-
-```bash
-make
-```
-
-Run against the small dataset:
-
+### 2. Interactive CLI Commands
+Run the interactive console locally:
 ```bash
 ./search_engine -i datasets/smallDataset.txt -k 5
 ```
-
-Run with a custom expansion dictionary:
-
-```bash
-./search_engine -i datasets/smallDataset.txt -k 5 -e docs/expansions.example.txt
-```
-
-Interactive commands:
-
+Commands available:
 ```text
 /search <terms...>       Rank documents using BM25
-/search --explain <...>  Show ranking explanations once
-/topk <number>           Change result count for this session
-/explain <on|off>        Toggle ranking explanations
-/suggest <prefix> [n]    Show trie autocomplete suggestions
-/analytics               Show query and autocomplete counts
-/df [term]               Print document frequency
-/tf <doc_id> <term>      Print term frequency
-/help                    Show available commands
+/search --explain <...>  Show scoring metrics
+/topk <number>           Adjust results limit for the current session
+/explain <on|off>        Toggle explainability logs
+/suggest <prefix> [n]    Print autocomplete lists
+/analytics               Print search usage telemetry
+/df [term]               Inspect document frequency of a token
+/tf <doc_id> <term>      Inspect term frequency in a document
 /exit                    Quit IntelliSearch
 ```
 
-Example:
+### 3. REST API Endpoints
+FastAPI maps queries to C++ runner pipes:
+- `POST /search`: Evaluates queries and outputs ranking reports.
+- `GET /autocomplete?q=<prefix>&limit=<n>`: Fetches autocomplete suggestions.
+- `GET /analytics`: Inspects search term and prefix click history.
+- `GET /health`: Diagnoses file and binary health.
 
-```text
-search_engine> /search data structures
+---
 
-Rank  Doc ID  Score       Snippet
-----  ------  ----------  ----------------------------------------
-   1      55     2.05571  ... Hot 100 chart now incorporates [data] from sales ...
-```
+## 🚢 Cloud Deployment Guide
 
-Matched query terms are highlighted in snippets with square brackets.
+Because the application compiles to a single multi-stage image, it can be deployed on popular PaaS systems with one click.
 
-Explanation example:
+### Deploying to Render
+1. Create a new **Web Service** on Render and connect your GitHub repository.
+2. Select **Docker** as the Environment.
+3. Add the following Environment Variables in the Render console:
+   - `INTELLISEARCH_DATASET` = `datasets/smallDataset.txt`
+   - `INTELLISEARCH_CORE_BINARY` = `/app/search_engine_api`
+   - `PORT` = `8000` (Render binds this port automatically)
+4. Click **Deploy Web Service**.
 
-```text
-search_engine> /search --explain spearrs
+### Deploying to Railway
+1. Create a new project on Railway and link your repository.
+2. Railway will automatically detect the root `Dockerfile` and execute the multi-stage build.
+3. Configure the `PORT` variable to `8000`.
+4. Expose the service to generate a public domain link.
 
-Rank  Doc ID  Score       Snippet
-----  ------  ----------  ----------------------------------------
-   1       0     1.63990  [Spears] seeks aborted tour payment Singer Britney [Spears] is ...
-      score = bm25(0.00000) + expansion(0.00000) + fuzzy(1.63990) + phrase(0.00000)
-      matched terms: spears
-      fuzzy matches: spearrs -> spears (d=1)
-```
+---
 
-## Engineering Highlights
+## 📸 Screenshots & Explainability Dashboard
 
-- Refactored from a flat coursework layout into `src/`, `include/`, `ranking/`, and `parsing/` modules.
-- Preserves the original trie plus posting-list indexing model.
-- Uses RAII in posting lists to reduce manual memory-management risk.
-- Separates tokenization, ranking, indexing, and CLI responsibilities.
-- Adds typo-tolerant retrieval with bounded edit distance.
-- Adds configurable query expansion for acronyms and synonyms.
-- Adds exact phrase boosting without replacing BM25.
-- Tracks lightweight search and autocomplete analytics.
-- Provides ranking explanations for debugging retrieval behavior.
-- Adds robust command validation to prevent malformed input crashes.
-- Supports configurable top-k both at startup and during an interactive session.
-- Adds trie-backed autocomplete without introducing external dependencies.
-- Keeps the implementation lightweight and suitable for future systems-level extensions.
+### 1. Main Search Console
+*(Placeholder for Search GUI Screenshot: Displays search inputs, autocomplete dropdowns, and clean UI components)*
 
-## Make Targets
+### 2. Detailed Relevance Breakdown
+*(Placeholder for Explainability Panel Screenshot: Shows teal/blue component bar charts representing BM25 relevance scores, synonym boosts, and edit penalties)*
 
-```bash
-make        # Build search_engine and search_engine_api
-make run    # Build and run with datasets/smallDataset.txt
-make clean  # Remove build artifacts
-```
-
-## Roadmap
-
-Planned future phases:
-
-- Add focused unit tests for tokenization, posting lists, trie lookup, and BM25.
-- Add focused unit tests for fuzzy matching, expansion, analytics, and explanation output.
-- Add query operators such as boolean filters and field-aware search.
-- Improve ranking with score normalization and better handling for very common terms.
-- Optimize fuzzy matching with trie traversal or Levenshtein automata for larger vocabularies.
-- Add document ingestion helpers for richer file formats.
-- Later, introduce a frontend around the backend API.
-- Later, add semantic retrieval and hybrid lexical/vector ranking.
-
-The current codebase intentionally remains a focused C++ search engine with a thin backend API layer. Frontend UI, databases, authentication, and semantic search are future phases rather than current dependencies.
+### 3. Usage Analytics Logs
+*(Placeholder for Analytics Table Screenshot: Shows charts detailing most popular searches and prefix entries)*

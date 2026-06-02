@@ -39,3 +39,10 @@ pnpm-debug.log*
 *.log
 tmp/
 temp/
+
+# TypeScript build artifacts
+*.tsbuildinfo
+
+# Generated Vite artifacts
+frontend/vite.config.js
+frontend/vite.config.d.ts

@@ -41,4 +41,13 @@ run: $(CLI_TARGET)
 clean:
 	rm -rf $(BUILD_DIR) $(CLI_TARGET) $(API_TARGET)
 
+docker-build:
+	docker build -t intellisearch:latest .
+
+docker-run:
+	docker run -it --rm -p 8000:8000 --name intellisearch-app intellisearch:latest
+
+docker-clean:
+	docker rmi intellisearch:latest
+
 -include $(DEPS)

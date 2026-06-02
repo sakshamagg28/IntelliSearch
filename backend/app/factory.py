@@ -35,4 +35,11 @@ def create_app(settings: Optional[Settings] = None) -> FastAPI:
     app.include_router(autocomplete.router)
     app.include_router(analytics.router)
 
+    # Serve React frontend static files if they exist in the build output directory
+    from fastapi.staticfiles import StaticFiles
+    import os
+    static_dir = os.path.join(app.state.settings.project_root, "frontend", "dist")
+    if os.path.exists(static_dir):
+        app.mount("/", StaticFiles(directory=static_dir, html=True), name="static")
+
     return app
