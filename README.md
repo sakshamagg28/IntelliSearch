@@ -200,3 +200,4 @@ Shows typo-tolerant retrieval using Levenshtein-distance fuzzy matching along wi
 Displays tracked search queries and autocomplete usage statistics collected through the FastAPI analytics layer.
 
 ![Analytics Dashboard](screenshots/analytics.png)
+
