@@ -179,11 +179,24 @@ Because the application compiles to a single multi-stage image, it can be deploy
 
 ## 📸 Screenshots & Explainability Dashboard
 
-### 1. Main Search Console
-*(Placeholder for Search GUI Screenshot: Displays search inputs, autocomplete dropdowns, and clean UI components)*
+### 1. Search Experience
 
-### 2. Detailed Relevance Breakdown
-*(Placeholder for Explainability Panel Screenshot: Shows teal/blue component bar charts representing BM25 relevance scores, synonym boosts, and edit penalties)*
+Demonstrates ranked retrieval using the custom C++ inverted index and BM25 scoring engine.
 
-### 3. Usage Analytics Logs
-*(Placeholder for Analytics Table Screenshot: Shows charts detailing most popular searches and prefix entries)*
+![Search Experience](screenshots/search_experience.png)
+
+---
+
+### 2. Explainable Ranking & Fuzzy Search
+
+Shows typo-tolerant retrieval using Levenshtein-distance fuzzy matching along with a detailed relevance score breakdown (BM25, fuzzy match contribution, phrase boosts, and query expansions).
+
+![Explainable Ranking & Fuzzy Search](screenshots/fuzzy.png)
+
+---
+
+### 3. Analytics Dashboard
+
+Displays tracked search queries and autocomplete usage statistics collected through the FastAPI analytics layer.
+
+![Analytics Dashboard](screenshots/analytics.png)
