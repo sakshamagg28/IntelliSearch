@@ -1,6 +1,6 @@
 # IntelliSearch 🚀
 
-[![Continuous Integration](https://github.com/your-username/IntelliSearch/actions/workflows/ci.yml/badge.svg)](https://github.com/your-username/IntelliSearch/actions/workflows/ci.yml)
+[![Continuous Integration](https://github.com/sakshamagg28/IntelliSearch/actions/workflows/ci.yml/badge.svg)](https://github.com/sakshamagg28/IntelliSearch/actions/workflows/ci.yml) 
 [![C++ Standard](https://img.shields.io/badge/C%2B%2B-11-blue.svg)](https://en.cppreference.com/w/cpp/11)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100%2B-teal.svg)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/React-19.0-blue.svg)](https://react.dev)
@@ -19,6 +19,23 @@ This platform showcases the practical implementation of core computer science st
 - **Algorithmic Typos Tolerance**: Computes spelling corrections on-the-fly using Levenshtein distance calculations.
 - **Explainable Ranking**: The UI visualizes individual scoring weights (BM25, Fuzzy edit penalty, Synonym expansions, Phrase proximity boosts) so you see exactly *why* a document was ranked first.
 - **Enterprise-Ready Infrastructure**: Fully Dockerized (multi-stage build), orchestrated via Docker Compose, and verified automatically with GitHub Actions CI workflows.
+
+---
+
+## ⚡ Quick Run
+
+Run IntelliSearch using Docker:
+
+```bash
+docker build -t intellisearch .
+docker run -p 8000:8000 intellisearch
+```
+
+Open:
+
+```text
+http://localhost:8000
+```
 
 ---
 
